@@ -6,7 +6,15 @@
 # Define the MCP module
 module FastMcp
   class << self
-    attr_accessor :server
+    def server
+      @server_mutex ||= Mutex.new
+      @server_mutex.synchronize { @server }
+    end
+
+    def server=(new_server)
+      @server_mutex ||= Mutex.new
+      @server_mutex.synchronize { @server = new_server }
+    end
   end
 end
 
@@ -149,7 +157,7 @@ module FastMcp
     options[:allowed_origins] = allowed_origins
 
     # Create or get the server
-    self.server = FastMcp::Server.new(name: name, version: version, logger: logger)
+    self.server ||= FastMcp::Server.new(name: name, version: version, logger: logger)
     yield self.server if block_given?
 
     # Choose the right middleware based on authentication
