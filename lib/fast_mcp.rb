@@ -6,7 +6,15 @@
 # Define the MCP module
 module FastMcp
   class << self
-    attr_accessor :server
+    def server
+      @server_mutex ||= Mutex.new
+      @server_mutex.synchronize { @server }
+    end
+
+    def server=(new_server)
+      @server_mutex ||= Mutex.new
+      @server_mutex.synchronize { @server = new_server }
+    end
   end
 end
 
@@ -88,7 +96,10 @@ module FastMcp
   # @param tool [FastMcp::Tool] The tool to register
   # @return [FastMcp::Tool] The registered tool
   def self.register_tool(tool)
-    self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    @server_mutex ||= Mutex.new
+    @server_mutex.synchronize do
+      self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    end
     self.server.register_tool(tool)
   end
 
@@ -96,7 +107,10 @@ module FastMcp
   # @param tools [Array<FastMcp::Tool>] The tools to register
   # @return [Array<FastMcp::Tool>] The registered tools
   def self.register_tools(*tools)
-    self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    @server_mutex ||= Mutex.new
+    @server_mutex.synchronize do
+      self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    end
     self.server.register_tools(*tools)
   end
 
@@ -104,7 +118,10 @@ module FastMcp
   # @param resource [FastMcp::Resource] The resource to register
   # @return [FastMcp::Resource] The registered resource
   def self.register_resource(resource)
-    self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    @server_mutex ||= Mutex.new
+    @server_mutex.synchronize do
+      self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    end
     self.server.register_resource(resource)
   end
 
@@ -112,7 +129,10 @@ module FastMcp
   # @param resources [Array<FastMcp::Resource>] The resources to register
   # @return [Array<FastMcp::Resource>] The registered resources
   def self.register_resources(*resources)
-    self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    @server_mutex ||= Mutex.new
+    @server_mutex.synchronize do
+      self.server ||= FastMcp::Server.new(name: 'mcp-server', version: '1.0.0')
+    end
     self.server.register_resources(*resources)
   end
 
@@ -148,8 +168,11 @@ module FastMcp
     options[:logger] = logger
     options[:allowed_origins] = allowed_origins
 
-    # Create or get the server
-    self.server = FastMcp::Server.new(name: name, version: version, logger: logger)
+    # Create or get the server (thread-safe singleton pattern)
+    @server_mutex ||= Mutex.new
+    @server_mutex.synchronize do
+      self.server ||= FastMcp::Server.new(name: name, version: version, logger: logger)
+    end
     yield self.server if block_given?
 
     # Choose the right middleware based on authentication
